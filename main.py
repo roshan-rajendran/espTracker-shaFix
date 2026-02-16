@@ -13,7 +13,8 @@ from web_ui import app
 
 
 def _open_browser(port):
-    time.sleep(1.2)
+    # Wait for server to be listening before opening browser
+    time.sleep(3)
     webbrowser.open("http://127.0.0.1:{}".format(port))
 
 
@@ -38,7 +39,20 @@ if __name__ == "__main__":
         sys.exit(0)
 
     port = args.port
-    print("Starting Ather Tag Locator at http://127.0.0.1:{}".format(port))
-    print("Select a tracker and click 'Get location' to see it on the map.")
+    url = "http://127.0.0.1:{}".format(port)
+    print("")
+    print("=" * 60)
+    print("  Ather Tag Locator")
+    print("=" * 60)
+    print("  Open in your browser (copy if needed):")
+    print("  ")
+    print("    " + url)
+    print("  ")
+    print("  Or try:  http://localhost:{}".format(port))
+    print("=" * 60)
+    print("  If 'site can't be reached': check firewall, or run with  --port 8080")
+    print("  Leave this window open while using the app.")
+    print("=" * 60)
+    print("")
     threading.Thread(target=_open_browser, args=(port,), daemon=True).start()
     app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=False)
