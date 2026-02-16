@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Find My Device – Tracker location</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
+    .meta {
+      background: #16213e;
+      padding: 12px 16px;
+      border-bottom: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+    .meta h1 { margin: 0 0 8px 0; font-size: 1.1rem; font-weight: 600; color: #e94560; }
+    .meta .row { display: flex; flex-wrap: wrap; gap: 12px 20px; font-size: 0.9rem; }
+    .meta .label { color: #888; }
+    .meta .value { color: #fff; }
+    .meta .waiting { color: #888; font-style: italic; }
+    .map-wrap { flex: 1; min-height: 280px; position: relative; }
+    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #1a1a2e; }
+    .meta a { color: #e94560; }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <h1 id="device-name">Tracker</h1>
+    <div class="row" id="meta-rows">
+      <span class="waiting" id="status">Waiting for location…</span>
+    </div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+  </div>
+
+  <script>
+    (function() {
+      var map = null;
+      var marker = null;
+      var defaultCenter = [37.77, -122.42];
+      var defaultZoom = 10;
+
+      function initMap() {
+        if (map) return;
+        map = L.map('map').setView(defaultCenter, defaultZoom);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+      }
+
+      function updateMeta(data) {
+        var nameEl = document.getElementById('device-name');
+        var rowsEl = document.getElementById('meta-rows');
+        nameEl.textContent = data.device_name || 'Tracker';
+
+        if (!data.latest) {
+          rowsEl.innerHTML = '<span class="waiting" id="status">Waiting for location…</span>';
+          return;
+        }
+
+        var loc = data.latest;
+        var html = '';
+        html += '<span><span class="label">Lat:</span> <span class="value">' + (loc.latitude != null ? loc.latitude.toFixed(6) : '–') + '</span></span>';
+        html += '<span><span class="label">Lon:</span> <span class="value">' + (loc.longitude != null ? loc.longitude.toFixed(6) : '–') + '</span></span>';
+        html += '<span><span class="label">Time:</span> <span class="value">' + (loc.time_iso || '–') + '</span></span>';
+        if (loc.altitude != null) html += '<span><span class="label">Alt:</span> <span class="value">' + loc.altitude + ' m</span></span>';
+        if (loc.maps_link) html += '<span><a href="' + loc.maps_link + '" target="_blank" rel="noopener">Open in Google Maps</a></span>';
+        rowsEl.innerHTML = html;
+      }
+
+      function updateMap(data) {
+        if (!data.latest || data.latest.latitude == null || data.latest.longitude == null) return;
+        initMap();
+        var lat = data.latest.latitude;
+        var lon = data.latest.longitude;
+        if (!marker) {
+          marker = L.marker([lat, lon]).addTo(map);
+        } else {
+          marker.setLatLng([lat, lon]);
+        }
+        map.setView([lat, lon], Math.max(map.getZoom(), 14));
+      }
+
+      function poll() {
+        fetch('/api/location')
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            updateMeta(data);
+            updateMap(data);
+          })
+          .catch(function() {});
+      }
+
+      initMap();
+      poll();
+      setInterval(poll, 3000);
+    })();
+  </script>
+</body>
+</html>

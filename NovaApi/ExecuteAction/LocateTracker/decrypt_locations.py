@@ -124,12 +124,47 @@ def decrypt_location_response_locations(device_update_protobuf):
             )
             location_time_array.append(wrapped_location)
 
+    # Build list of dicts for API/UI (geo locations only; semantic has no lat/lon)
+    locations_for_api = []
+    for loc in location_time_array:
+        if loc.status == Common_pb2.Status.SEMANTIC:
+            locations_for_api.append({
+                "latitude": None,
+                "longitude": None,
+                "altitude": None,
+                "time": loc.time,
+                "time_iso": datetime.datetime.fromtimestamp(loc.time).strftime("%Y-%m-%d %H:%M:%S"),
+                "is_own_report": loc.is_own_report,
+                "status": int(loc.status),
+                "name": loc.name,
+                "accuracy": loc.accuracy,
+                "semantic": True,
+            })
+        else:
+            proto_loc = DeviceUpdate_pb2.Location()
+            proto_loc.ParseFromString(loc.decrypted_location)
+            lat = proto_loc.latitude / 1e7
+            lon = proto_loc.longitude / 1e7
+            locations_for_api.append({
+                "latitude": lat,
+                "longitude": lon,
+                "altitude": proto_loc.altitude,
+                "time": loc.time,
+                "time_iso": datetime.datetime.fromtimestamp(loc.time).strftime("%Y-%m-%d %H:%M:%S"),
+                "is_own_report": loc.is_own_report,
+                "status": int(loc.status),
+                "name": "",
+                "accuracy": loc.accuracy,
+                "semantic": False,
+                "maps_link": create_google_maps_link(lat, lon),
+            })
+
     print("-" * 40)
     print("[DecryptLocations] Decrypted Locations:")
 
     if not location_time_array:
         print("No locations found.")
-        return
+        return []
 
     for loc in location_time_array:
 
@@ -154,7 +189,7 @@ def decrypt_location_response_locations(device_update_protobuf):
         print(f"Is Own Report: {loc.is_own_report}")
         print("-" * 40)
 
-    pass
+    return locations_for_api
 
 
 if __name__ == '__main__':

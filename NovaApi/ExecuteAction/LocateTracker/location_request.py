@@ -15,6 +15,7 @@ from NovaApi.util import generate_random_uuid
 from ProtoDecoders import DeviceUpdate_pb2
 from ProtoDecoders.decoder import parse_device_update_protobuf
 from example_data_provider import get_example_data
+from web_ui import start_web_server, set_locations
 
 def create_location_request(canonic_device_id, fcm_registration_id, request_uuid):
 
@@ -34,6 +35,10 @@ def get_location_data_for_device(canonic_device_id, name):
 
     print(f"[LocationRequest] Requesting location data for {name}...")
 
+    # Start web UI so you can open it on your phone while waiting
+    start_web_server(port=5000)
+    set_locations(name, [])  # show device name immediately; "Waiting for location..."
+
     result = None
     request_uuid = generate_random_uuid()
 
@@ -44,7 +49,6 @@ def get_location_data_for_device(canonic_device_id, name):
         if device_update.fcmMetadata.requestUuid == request_uuid:
             print("[LocationRequest] Location request successful. Decrypting locations...")
             result = parse_device_update_protobuf(response)
-            #print_device_update_protobuf(response)
 
     fcm_token = FcmReceiver().register_for_location_updates(handle_location_response)
 
@@ -54,7 +58,9 @@ def get_location_data_for_device(canonic_device_id, name):
     while result is None:
         time.sleep(0.1)
 
-    decrypt_location_response_locations(result)
+    locations = decrypt_location_response_locations(result)
+    if locations is not None:
+        set_locations(name, locations)
 
 if __name__ == '__main__':
     get_location_data_for_device(get_example_data("sample_canonic_device_id"), "Test")

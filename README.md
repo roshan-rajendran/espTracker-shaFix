@@ -20,6 +20,44 @@ Currently, it is possible to query Find My Device / Find Hub trackers and Androi
 - Install the latest version of Google Chrome: https://www.google.com/chrome/
 - Start the program by running [main.py](main.py): `python main.py` or `python3 main.py`
 
+### Run fully on your phone (no laptop)
+
+You can run the whole app **on your Android phone** and open the map in the phone’s browser. No computer needed after one-time setup.
+
+**One-time setup (do once on a computer):**
+
+1. On a PC/Mac: run `python main.py`, go through the Google login (Chrome required). After it works, copy the **`Auth`** folder (with `secrets.json` and any cache) to your phone (e.g. via USB, cloud, or messaging yourself). You need this because the first-time Google auth needs Chrome and can’t be done inside Termux.
+
+**On your Android phone:**
+
+1. Install **Termux** from [F-Droid](https://f-droid.org/en/packages/com.termux/) (recommended) or from the [GitHub releases](https://github.com/termux/termux-app/releases). Avoid the Play Store version (often outdated).
+2. Open Termux and run:
+   ```bash
+   pkg update && pkg install python git
+   cd ~
+   git clone https://github.com/leoboe/GoogleFindMyTools.git
+   cd GoogleFindMyTools
+   # (Or download the project ZIP and extract it to ~/GoogleFindMyTools, then cd there.)
+   pip install -r requirements.txt
+   ```
+3. Copy the **`Auth`** folder from your computer into `~/GoogleFindMyTools/Auth` (so `Auth/secrets.json` exists). Use Termux’s shared storage or `termux-setup-storage` and copy from Download.
+4. Run:
+   ```bash
+   python main.py
+   ```
+5. When the tracker list appears, type the number of your tracker and press Enter.
+6. The script will print: **Open in your browser: http://127.0.0.1:5000**
+7. On the **same phone**, open Chrome (or any browser) and go to **http://127.0.0.1:5000**. You’ll see the map and metadata (lat, lon, time, altitude). Everything runs on the phone.
+
+**Notes:**
+
+- Registering a new ESP32 tracker (`r`) and the first-time Google auth still need a computer with Chrome. After that, use the copied `Auth` folder on the phone.
+- If you don’t have a computer at all, you could run the first-time auth in a desktop-style environment on the phone (e.g. UserLAnd with a desktop), but that’s more involved; the usual path is one-time auth on laptop, then phone-only.
+
+### View location on your phone (from a laptop)
+
+If you run `main.py` on a laptop and want to see the map on your phone: when you select a tracker, the script prints a URL like `http://192.168.x.x:5000`. Open that URL on your phone (same Wi‑Fi). The page shows **lat/lon, time, altitude** and a **map** that refreshes every few seconds.
+
 ### Authentication
 
 On the first run, an authentication sequence is executed, which requires a computer with access to Google Chrome.

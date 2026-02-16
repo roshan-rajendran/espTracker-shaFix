@@ -53,6 +53,12 @@ from .const import (
     GCM_SERVER_KEY_B64,
     SDK_VERSION,
 )
+
+# Required by Google for API key validation (Android package + SHA1 cert)
+ANDROID_PACKAGE_HEADERS = {
+    "X-Android-Package": "com.google.android.apps.adm",
+    "X-Android-Cert": "38918a453d07199354f8b19af05ec6562ced5788",
+}
 from .proto.android_checkin_pb2 import (
     DEVICE_CHROME_BROWSER,
     AndroidCheckinProto,
@@ -162,7 +168,10 @@ class FcmRegister:
             try:
                 async with self._session.post(
                     url=GCM_CHECKIN_URL,
-                    headers={"Content-Type": "application/x-protobuf"},
+                    headers={
+                        "Content-Type": "application/x-protobuf",
+                        **ANDROID_PACKAGE_HEADERS,
+                    },
                     data=payload.SerializeToString(),
                     timeout=self.CLIENT_TIMEOUT,
                 ) as resp:
@@ -228,6 +237,7 @@ class FcmRegister:
         headers = {
             "Authorization": f"AidLogin {android_id}:{security_token}",
             "Content-Type": "application/x-www-form-urlencoded",
+            **ANDROID_PACKAGE_HEADERS,
         }
         body = {
             "app": "org.chromium.linux",
@@ -308,6 +318,7 @@ class FcmRegister:
         headers = {
             "x-firebase-client": hb_header,
             "x-goog-api-key": self.config.api_key,
+            **ANDROID_PACKAGE_HEADERS,
         }
         payload = {
             "appId": self.config.app_id,
@@ -352,6 +363,7 @@ class FcmRegister:
             "Authorization": f"{AUTH_VERSION} {fcm_refresh_token}",
             "x-firebase-client": hb_header,
             "x-goog-api-key": self.config.api_key,
+            **ANDROID_PACKAGE_HEADERS,
         }
         payload = {
             "installation": {
@@ -416,6 +428,7 @@ class FcmRegister:
         headers = {
             "x-goog-api-key": self.config.api_key,
             "x-goog-firebase-installations-auth": installation["token"],
+            **ANDROID_PACKAGE_HEADERS,
         }
         # If vapid_key is the default do not send it here or it will error
         vapid_key = (
