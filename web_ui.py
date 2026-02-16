@@ -1,11 +1,11 @@
 #
-#  GoogleFindMyTools - Web UI to view tracker location on phone
-#  Serves a single HTML page with map + metadata; run after selecting a device in main.py
+#  GoogleFindMyTools - Web UI to view tracker location
+#  Single HTML page: select tracker, request location, see map + metadata.
 #
 
 import threading
-from flask import Flask, jsonify, send_from_directory
 import os
+from flask import Flask, jsonify, request, send_from_directory
 
 app = Flask(__name__, static_folder=None)
 
@@ -47,6 +47,35 @@ def api_location():
         "locations": locations,
         "latest": latest,
     })
+
+
+@app.route("/api/devices")
+def api_devices():
+    """Return list of trackers { name, canonic_id } for the selector."""
+    try:
+        from NovaApi.ListDevices.nbe_list_devices import get_device_list
+        devices = get_device_list()
+        return jsonify({"devices": devices})
+    except Exception as e:
+        return jsonify({"error": str(e), "devices": []}), 500
+
+
+@app.route("/api/request-location", methods=["POST"])
+def api_request_location():
+    """Start location request for the given tracker (runs in background)."""
+    data = request.get_json() or {}
+    canonic_id = data.get("canonic_id")
+    name = data.get("name")
+    if not canonic_id or not name:
+        return jsonify({"error": "Missing canonic_id or name"}), 400
+    try:
+        from NovaApi.ExecuteAction.LocateTracker.location_request import get_location_data_for_device
+        def run():
+            get_location_data_for_device(canonic_id, name, skip_web_server=True)
+        threading.Thread(target=run, daemon=True).start()
+        return jsonify({"status": "requesting"}), 202
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 def _run_server(port: int):

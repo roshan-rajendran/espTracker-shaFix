@@ -40,6 +40,15 @@ def create_device_list_request():
     return hex_payload
 
 
+def get_device_list():
+    """Return list of { 'name', 'canonic_id' } for all trackers. Used by web UI."""
+    result_hex = request_device_list()
+    device_list = parse_device_list_protobuf(result_hex)
+    refresh_custom_trackers(device_list)
+    canonic_ids = get_canonic_ids(device_list)
+    return [{"name": name, "canonic_id": cid} for name, cid in canonic_ids]
+
+
 def list_devices():
     print("Loading...")
     result_hex = request_device_list()

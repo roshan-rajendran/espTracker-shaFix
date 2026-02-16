@@ -31,12 +31,12 @@ def create_location_request(canonic_device_id, fcm_registration_id, request_uuid
     return hex_payload
 
 
-def get_location_data_for_device(canonic_device_id, name):
+def get_location_data_for_device(canonic_device_id, name, skip_web_server=False):
 
     print(f"[LocationRequest] Requesting location data for {name}...")
 
-    # Start web UI so you can open it on your phone while waiting
-    start_web_server(port=5000)
+    if not skip_web_server:
+        start_web_server(port=5000)
     set_locations(name, [])  # show device name immediately; "Waiting for location..."
 
     result = None

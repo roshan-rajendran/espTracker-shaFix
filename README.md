@@ -19,6 +19,8 @@ Currently, it is possible to query Find My Device / Find Hub trackers and Androi
 - Install all required packages: `pip install -r requirements.txt`
 - Install the latest version of Google Chrome: https://www.google.com/chrome/
 - Start the program by running [main.py](main.py): `python main.py` or `python3 main.py`
+  - This opens a **web page** in your browser where you can **select a tracker** from a dropdown and click **Get location** to see it on a **map** with lat/lon and time. No terminal selection needed.
+  - To use the terminal instead (e.g. to register a new ESP32 by pressing `r`), run: `python main.py --cli`
 
 ### Run fully on your phone (no laptop)
 
@@ -62,7 +64,16 @@ If you run `main.py` on a laptop and want to see the map on your phone: when you
 
 On the first run, an authentication sequence is executed, which requires a computer with access to Google Chrome.
 
-The authentication results are stored in `Auth/secrets.json`. If you intend to run this tool on a headless machine, you can just copy this file to avoid having to use Chrome.
+The authentication results are stored in **`Auth/secrets.json`**. That single file holds everything the tool needs to talk to Google (tokens, FCM credentials, keys). It is **not** in the git repo (it’s in `.gitignore`) for security.
+
+**Use the same auth on a new laptop (skip the Chrome step):**
+
+1. On the **computer where it already works**, copy the file **`Auth/secrets.json`** (from inside the project’s `Auth` folder).
+2. On the **new laptop**, clone the repo and install deps as usual. Then create the `Auth` folder if needed and put **`secrets.json`** there:
+   - Path on the new laptop: `GoogleFindMyTools/Auth/secrets.json`
+3. Run `python main.py` on the new laptop. It will go straight to the tracker list and tracking—no Chrome login.
+
+You can copy the file via USB stick, cloud (Drive, iCloud, etc.), or secure messaging. **Do not commit or push `secrets.json` to git**; treat it like a password.
 
 ### Known Issues
 - "Your encryption data is locked on your device" is shown if you have never set up Find My Device on an Android device. Solution: Login with your Google Account on an Android device, go to Settings > Google > All Services > Find My Device > Find your offline devices > enable "With network in all areas" or "With network in high-traffic areas only". If "Find your offline devices" is not shown in Settings, you will need to download the Find My Device app from Google's Play Store, and pair a real Find My Device tracker with your device to force-enable the Find My Device network.

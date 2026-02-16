@@ -3,33 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Find My Device – Tracker location</title>
+  <title>Ather Tag Locator</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; flex-direction: column; }
-    .meta {
+    .picker {
       background: #16213e;
       padding: 12px 16px;
       border-bottom: 1px solid #0f3460;
       flex-shrink: 0;
     }
-    .meta h1 { margin: 0 0 8px 0; font-size: 1.1rem; font-weight: 600; color: #e94560; }
+    .picker h1 { margin: 0 0 10px 0; font-size: 1rem; font-weight: 600; color: #e94560; }
+    .picker .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .picker select {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px 12px;
+      font-size: 0.95rem;
+      background: #0f3460;
+      color: #fff;
+      border: 1px solid #1a1a2e;
+      border-radius: 6px;
+    }
+    .picker button {
+      padding: 8px 16px;
+      font-size: 0.95rem;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .picker button:hover { background: #ff6b6b; }
+    .picker button:disabled { background: #555; cursor: not-allowed; }
+    .picker .msg { font-size: 0.85rem; color: #888; margin-top: 6px; }
+    .picker .err { color: #e94560; }
+    .meta {
+      background: #16213e;
+      padding: 10px 16px;
+      border-bottom: 1px solid #0f3460;
+      flex-shrink: 0;
+    }
+    .meta h2 { margin: 0 0 8px 0; font-size: 1rem; font-weight: 600; color: #e94560; }
     .meta .row { display: flex; flex-wrap: wrap; gap: 12px 20px; font-size: 0.9rem; }
     .meta .label { color: #888; }
     .meta .value { color: #fff; }
     .meta .waiting { color: #888; font-style: italic; }
-    .map-wrap { flex: 1; min-height: 280px; position: relative; }
-    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #1a1a2e; }
     .meta a { color: #e94560; }
+    .map-wrap { flex: 1; min-height: 260px; position: relative; }
+    #map { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #1a1a2e; }
   </style>
 </head>
 <body>
+  <div class="picker">
+    <h1>Ather Tag Locator</h1>
+    <div class="row">
+      <select id="tracker-select" disabled>
+        <option value="">Loading trackers…</option>
+      </select>
+      <button id="btn-location" disabled>Get location</button>
+    </div>
+    <div class="msg" id="picker-msg">Load the list, then select a tracker and click Get location.</div>
+  </div>
   <div class="meta">
-    <h1 id="device-name">Tracker</h1>
+    <h2 id="device-name">—</h2>
     <div class="row" id="meta-rows">
-      <span class="waiting" id="status">Waiting for location…</span>
+      <span class="waiting" id="status">Select a tracker and click Get location.</span>
     </div>
   </div>
   <div class="map-wrap">
@@ -42,6 +84,74 @@
       var marker = null;
       var defaultCenter = [37.77, -122.42];
       var defaultZoom = 10;
+      var devices = [];
+
+      function el(id) { return document.getElementById(id); }
+
+      function setMsg(text, isError) {
+        var m = el('picker-msg');
+        m.textContent = text;
+        m.className = 'msg' + (isError ? ' err' : '');
+      }
+
+      function loadDevices() {
+        setMsg('Loading trackers…');
+        fetch('/api/devices')
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.error) {
+              setMsg('Could not load trackers: ' + data.error, true);
+              el('tracker-select').innerHTML = '<option value="">No trackers</option>';
+              return;
+            }
+            devices = data.devices || [];
+            var sel = el('tracker-select');
+            sel.innerHTML = '<option value="">— Select a tracker —</option>';
+            devices.forEach(function(d, i) {
+              var opt = document.createElement('option');
+              opt.value = i;
+              opt.textContent = d.name || d.canonic_id || ('Tracker ' + (i + 1));
+              sel.appendChild(opt);
+            });
+            sel.disabled = false;
+            el('btn-location').disabled = false;
+            setMsg('Select a tracker and click Get location.');
+          })
+          .catch(function(err) {
+            setMsg('Failed to load trackers: ' + err.message, true);
+          });
+      }
+
+      function requestLocation() {
+        var idx = el('tracker-select').value;
+        if (idx === '' || idx === null) {
+          setMsg('Select a tracker first.', true);
+          return;
+        }
+        var d = devices[parseInt(idx, 10)];
+        if (!d) return;
+        setMsg('Requesting location for ' + d.name + '…');
+        el('btn-location').disabled = true;
+        fetch('/api/request-location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ canonic_id: d.canonic_id, name: d.name })
+        })
+          .then(function(r) {
+            if (r.status === 202) {
+              setMsg('Waiting for location (may take a few seconds)…');
+            } else {
+              return r.json().then(function(data) {
+                setMsg(data.error || 'Request failed', true);
+                el('btn-location').disabled = false;
+              });
+            }
+          })
+          .catch(function(err) {
+            setMsg('Request failed: ' + err.message, true);
+            el('btn-location').disabled = false;
+          });
+      }
 
       function initMap() {
         if (map) return;
@@ -52,15 +162,12 @@
       }
 
       function updateMeta(data) {
-        var nameEl = document.getElementById('device-name');
-        var rowsEl = document.getElementById('meta-rows');
-        nameEl.textContent = data.device_name || 'Tracker';
-
+        el('device-name').textContent = data.device_name || '—';
+        var rowsEl = el('meta-rows');
         if (!data.latest) {
-          rowsEl.innerHTML = '<span class="waiting" id="status">Waiting for location…</span>';
+          rowsEl.innerHTML = '<span class="waiting" id="status">No location yet. Select a tracker and click Get location.</span>';
           return;
         }
-
         var loc = data.latest;
         var html = '';
         html += '<span><span class="label">Lat:</span> <span class="value">' + (loc.latitude != null ? loc.latitude.toFixed(6) : '–') + '</span></span>';
@@ -69,6 +176,8 @@
         if (loc.altitude != null) html += '<span><span class="label">Alt:</span> <span class="value">' + loc.altitude + ' m</span></span>';
         if (loc.maps_link) html += '<span><a href="' + loc.maps_link + '" target="_blank" rel="noopener">Open in Google Maps</a></span>';
         rowsEl.innerHTML = html;
+        el('btn-location').disabled = false;
+        setMsg('Location updated.');
       }
 
       function updateMap(data) {
@@ -84,7 +193,7 @@
         map.setView([lat, lon], Math.max(map.getZoom(), 14));
       }
 
-      function poll() {
+      function pollLocation() {
         fetch('/api/location')
           .then(function(r) { return r.json(); })
           .then(function(data) {
@@ -94,9 +203,10 @@
           .catch(function() {});
       }
 
+      el('btn-location').addEventListener('click', requestLocation);
       initMap();
-      poll();
-      setInterval(poll, 3000);
+      loadDevices();
+      setInterval(pollLocation, 3000);
     })();
   </script>
 </body>
