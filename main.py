@@ -12,9 +12,9 @@ import webbrowser
 from web_ui import app
 
 
-def _open_browser():
+def _open_browser(port):
     time.sleep(1.2)
-    webbrowser.open("http://127.0.0.1:5000")
+    webbrowser.open("http://127.0.0.1:{}".format(port))
 
 
 if __name__ == "__main__":
@@ -24,6 +24,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Use terminal instead of web UI (e.g. to register new ESP32 with 'r').",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5000,
+        help="Port for the web UI (default: 5000). Use e.g. 6000 if 5000 is in use.",
+    )
     args = parser.parse_args()
 
     if args.cli:
@@ -31,7 +37,8 @@ if __name__ == "__main__":
         list_devices()
         sys.exit(0)
 
-    print("Starting Ather Tag Locator at http://127.0.0.1:5000")
+    port = args.port
+    print("Starting Ather Tag Locator at http://127.0.0.1:{}".format(port))
     print("Select a tracker and click 'Get location' to see it on the map.")
-    threading.Thread(target=_open_browser, daemon=True).start()
-    app.run(host="0.0.0.0", port=5000, threaded=True, use_reloader=False)
+    threading.Thread(target=_open_browser, args=(port,), daemon=True).start()
+    app.run(host="0.0.0.0", port=port, threaded=True, use_reloader=False)
